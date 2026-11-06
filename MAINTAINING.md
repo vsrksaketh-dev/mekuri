@@ -14,9 +14,9 @@ Mekuri is my personal fork of [Mihon](https://github.com/mihonapp/mihon). It ins
 | `app/build.gradle.kts` | `applicationId = "com.vsrksaketh.mekuri"`, `versionName = "1.0.0"` (versionCode left at upstream's value) |
 | `i18n/.../base/strings.xml` | `app_name` = Mekuri |
 | `i18n/.../<22 locales>/strings.xml` | "Mihon" → "Mekuri" in `information_webview_required`, `untrusted_extension_message`, `obsolete_extension_message` |
-| `app/src/main/res/drawable/ic_launcher_{foreground,background,monochrome}.xml` | Mekuri icon (manga page being turned, purple gradient) |
-| `app/src/debug/res/drawable/ic_launcher_{foreground,background}.xml` | same icon, orange background for debug builds |
-| `app/src/main/res/drawable/ic_mihon.xml` | Mekuri logo (About header, splash, notifications). File name kept on purpose |
+| `app/src/main/res/drawable/ic_launcher_{foreground,background,monochrome}.xml` | Mekuri icon (brush-written め in sumi ink on washi, red 捲 seal; glyphs from Yuji Syuku / Shippori Mincho B1, OFL) |
+| `app/src/debug/res/drawable/ic_launcher_{foreground,background}.xml` | debug icon: same foreground, orange background |
+| `app/src/main/res/drawable/ic_mihon.xml` | Mekuri logo (About header, notifications), white silhouette. File name kept on purpose. Splash uses `ic_mihon_splash.xml` (ink on washi, `@color/splash` = #F4EFE6) |
 | `app/src/main/res/values/colors.xml` | splash colour |
 | `app/src/main/java/eu/kanade/tachiyomi/data/updater/AppUpdateChecker.kt` | update repo → `vsrksaketh-dev/mekuri` |
 | `app/src/main/java/eu/kanade/presentation/more/settings/screen/about/AboutScreen.kt` | only a GitHub link to this repo; Mihon website/social/privacy links removed |

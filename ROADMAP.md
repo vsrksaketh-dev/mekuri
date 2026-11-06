@@ -85,3 +85,10 @@ Motion level 4 of 5. Every release is installable on its own.
 - Momentum: a gentle push moves one card, a hard swipe flies through many and settles on a card; tap any visible card to open it; ⋯ opens the focused shelf's menu
 - Compact "Continue reading" card above the deck (last read manga, chapter progress, play to resume, History link)
 - Old spine shelf (`BookshelfHome`) kept in the code but no longer used
+
+## v2.1.0: Sumi ink icon and polish (done)
+- New icon: brush-written め (first letter of めくり) in sumi ink on washi paper with a small red 捲 seal; themed (monochrome) icon, washi splash screen, notification and About logo, README logo
+- Deck: a tap while the deck is still moving just stops it (no accidental opens); haptic tick on every card change while dragging too
+- Deck: cards keep their own state while moving; taps always use the current shelves (no stale shelf after edits)
+- More than 14 shelves: position shown as "5 / 18" instead of a row of dots that would overflow
+- Continue reading: progress reads "12 of 40 read"; the History link is a proper button (ripple, accessibility)

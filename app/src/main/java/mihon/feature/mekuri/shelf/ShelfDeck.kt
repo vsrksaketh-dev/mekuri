@@ -8,6 +8,7 @@ import androidx.compose.animation.core.calculateTargetValue
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -34,8 +35,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,12 +115,16 @@ fun ShelfDeck(
     val last = shelves.lastIndex
     val start = lastOpenedIndex.coerceIn(0, last)
 
+    val currentShelves by rememberUpdatedState(shelves)
+    val currentOnOpen by rememberUpdatedState(onOpen)
+    val currentOnVault by rememberUpdatedState(onVault)
     val position = remember { Animatable(start.toFloat()) }
     LaunchedEffect(start, shelves.size) {
         if (!position.isRunning) position.snapTo(start.toFloat())
     }
     val focused = position.value.roundToInt().coerceIn(0, last)
-    LaunchedEffect(focused) { if (position.isRunning) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+    var moving by remember { mutableStateOf(false) }
+    LaunchedEffect(focused) { if (moving) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
     val focusedShelf = shelves[focused]
     val glow by animateColorAsState(
         if (focusedShelf.kind ==
@@ -191,6 +200,7 @@ fun ShelfDeck(
                         val decay = exponentialDecay<Float>(frictionMultiplier = 0.55f)
                         detectHorizontalDragGestures(
                             onDragStart = {
+                                moving = true
                                 tracker.resetTracking()
                                 scope.launch { position.stop() }
                             },
@@ -213,87 +223,119 @@ fun ShelfDeck(
                                         animationSpec = spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow),
                                         initialVelocity = velocity,
                                     )
+                                    moving = false
                                 }
                             },
                             onDragCancel = {
                                 scope.launch {
                                     position.animateTo(position.value.roundToInt().coerceIn(0, last).toFloat())
+                                    moving = false
                                 }
                             },
                         )
                     }
                     .pointerInput(shelves.size, stepPx) {
-                        detectTapGestures { tap ->
+                        var wasMoving = false
+                        detectTapGestures(
+                            onPress = {
+                                wasMoving = position.isRunning
+                                if (wasMoving) {
+                                    position.stop()
+                                    val settle = position.value.roundToInt().coerceIn(0, last).toFloat()
+                                    scope.launch {
+                                        position.animateTo(settle)
+                                        moving = false
+                                    }
+                                }
+                            },
+                        ) { tap ->
+                            if (wasMoving) return@detectTapGestures
+                            val shelves = currentShelves
+                            val last = shelves.lastIndex
                             val relative = (tap.x - centerX) / stepPx
                             val i = (position.value + relative).roundToInt()
                             if (i !in 0..last) return@detectTapGestures
                             val cardLeft = centerX + (i - position.value) * stepPx - cardWidth.toPx() / 2
                             if (tap.x < cardLeft || tap.x > cardLeft + cardWidth.toPx()) return@detectTapGestures
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            if (shelves[i].kind == Shelf.Kind.Vault) onVault() else onOpen(i)
+                            if (shelves[i].kind == Shelf.Kind.Vault) currentOnVault() else currentOnOpen(i)
                         }
                     },
             ) {
                 shelves.forEachIndexed { i, shelf ->
                     val p = i - position.value
                     if (abs(p) > 3.2f) return@forEachIndexed
-                    val ap = abs(p)
-                    val lift by animateDpAsState(if (i == focused) 0.dp else 6.dp, label = "lift")
-                    DeckCard(
-                        shelf = shelf,
-                        color = colors[shelf.key] ?: fallbackColor(shelf.key),
-                        vaultUnlocked = vaultUnlocked,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset { IntOffset((p * stepPx).roundToInt(), lift.roundToPx()) }
-                            .size(cardWidth, cardHeight)
-                            .zIndex(10f - ap)
-                            .graphicsLayer {
-                                rotationY = p * -9f
-                                cameraDistance = 14f * density.density
-                                val scale = (1f - ap * 0.16f).coerceAtLeast(0.62f)
-                                scaleX = scale
-                                scaleY = scale
-                                alpha = (1f - ap * 0.38f).coerceAtLeast(0.12f)
-                            }
-                            .clearAndSetSemantics {
-                                contentDescription = shelf.name + if (shelf.kind == Shelf.Kind.Vault) {
-                                    ""
-                                } else {
-                                    ", ${shelf.count} " + (if (shelf.count == 1) "title" else "titles") +
-                                        if (shelf.hasUpdates) ", new this week" else ""
+                    key(shelf.key) {
+                        val ap = abs(p)
+                        val lift by animateDpAsState(if (i == focused) 0.dp else 6.dp, label = "lift")
+                        DeckCard(
+                            shelf = shelf,
+                            color = colors[shelf.key] ?: fallbackColor(shelf.key),
+                            vaultUnlocked = vaultUnlocked,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .offset { IntOffset((p * stepPx).roundToInt(), lift.roundToPx()) }
+                                .size(cardWidth, cardHeight)
+                                .zIndex(10f - ap)
+                                .graphicsLayer {
+                                    rotationY = p * -9f
+                                    cameraDistance = 14f * density.density
+                                    val scale = (1f - ap * 0.16f).coerceAtLeast(0.62f)
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = (1f - ap * 0.38f).coerceAtLeast(0.12f)
                                 }
-                                role = Role.Button
-                                onClick {
-                                    if (shelf.kind == Shelf.Kind.Vault) onVault() else onOpen(i)
-                                    true
-                                }
-                            },
-                    )
+                                .clearAndSetSemantics {
+                                    contentDescription = shelf.name + if (shelf.kind == Shelf.Kind.Vault) {
+                                        ""
+                                    } else {
+                                        ", ${shelf.count} " + (if (shelf.count == 1) "title" else "titles") +
+                                            if (shelf.hasUpdates) ", new this week" else ""
+                                    }
+                                    role = Role.Button
+                                    onClick {
+                                        if (shelf.kind == Shelf.Kind.Vault) onVault() else onOpen(i)
+                                        true
+                                    }
+                                },
+                        )
+                    }
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                shelves.forEachIndexed { i, shelf ->
-                    val on = i == focused
-                    Box(
-                        modifier = Modifier
-                            .height(6.dp)
-                            .width(if (on) 18.dp else 6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(
-                                when {
-                                    on -> MaterialTheme.colorScheme.onSurface
-                                    shelf.hasUpdates -> MaterialTheme.colorScheme.secondary
-                                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                                },
-                            ),
-                    )
+            if (shelves.size > 14) {
+                // Too many shelves for dots: show where you are instead
+                Text(
+                    text = "${focused + 1} / ${shelves.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 8.dp),
+                )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    shelves.forEachIndexed { i, shelf ->
+                        val on = i == focused
+                        Box(
+                            modifier = Modifier
+                                .height(6.dp)
+                                .width(if (on) 18.dp else 6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(
+                                    when {
+                                        on -> MaterialTheme.colorScheme.onSurface
+                                        shelf.hasUpdates -> MaterialTheme.colorScheme.secondary
+                                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                    },
+                                ),
+                        )
+                    }
                 }
             }
         }
@@ -339,7 +381,7 @@ private fun ResumeCard(resume: ResumeInfo, onResume: () -> Unit, onHistory: () -
                         color = scheme.primary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .pointerInput(Unit) { detectTapGestures { onHistory() } }
+                            .clickable(onClickLabel = "Open history", onClick = onHistory)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -351,7 +393,7 @@ private fun ResumeCard(resume: ResumeInfo, onResume: () -> Unit, onHistory: () -
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Ch. ${resume.readCount} of ${resume.totalChapters} · ${resume.lastReadLabel}",
+                    text = "${resume.readCount} of ${resume.totalChapters} read · ${resume.lastReadLabel}",
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                     maxLines = 1,
