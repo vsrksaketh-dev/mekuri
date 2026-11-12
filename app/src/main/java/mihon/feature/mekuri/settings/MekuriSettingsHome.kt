@@ -54,6 +54,7 @@ import mihon.icons.materialsymbols.rounded.Lock
 import mihon.icons.materialsymbols.rounded.Palette
 import mihon.icons.materialsymbols.rounded.Search
 import mihon.icons.materialsymbols.rounded.Security
+import mihon.icons.materialsymbols.rounded.Sparkle
 import mihon.icons.materialsymbols.rounded.Storage
 import mihon.icons.materialsymbols.rounded.Sync
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
@@ -82,6 +83,12 @@ fun MekuriSettingsHome(
     val wifiOnly by wifiPref.collectAsState()
 
     val groups = listOf(
+        Group(
+            "Mekuri",
+            "Vault lock, colours, new chapters",
+            MaterialSymbols.Rounded.Sparkle,
+            MekuriExtrasScreen(),
+        ),
         Group("Look", "Theme, dark mode, covers", MaterialSymbols.Rounded.Palette, SettingsAppearanceScreen),
         Group(
             "Reading",

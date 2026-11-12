@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Mekuri -->
+    <string name="mekuri_widget_shelves_description">Your shelves as cards, tap one to open it</string>
+    <string name="mekuri_widget_updates_description">The newest chapters from your library, with covers</string>
     <string name="mekuri_widget_continue_description">Jump back into the manga you read last</string>
 </resources>

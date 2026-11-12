@@ -39,6 +39,7 @@ import eu.kanade.tachiyomi.data.coil.InstalledSourceIconKeyer
 import eu.kanade.tachiyomi.data.coil.MangaCoverFetcher
 import eu.kanade.tachiyomi.data.coil.MangaCoverKeyer
 import eu.kanade.tachiyomi.data.coil.MangaKeyer
+import eu.kanade.tachiyomi.data.library.LibraryUpdateWorker
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -63,9 +64,11 @@ import mihon.core.metro.AppCoroutineScope
 import mihon.core.metro.GraphProvider
 import mihon.core.migration.Migration
 import mihon.core.migration.Migrator
+import mihon.feature.mekuri.MekuriPrefs
 import mihon.feature.mekuri.MekuriSetup
 import mihon.feature.mekuri.shelf.ShelfPrefs
 import mihon.feature.mekuri.vault.MekuriVault
+import mihon.feature.mekuri.widget.MekuriWidgets
 import mihon.telemetry.TelemetryConfig
 import org.conscrypt.Conscrypt
 import tachiyomi.core.common.i18n.stringResource
@@ -188,9 +191,18 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             .launchIn(scope)
 
         // Mekuri: one-time Mekuri defaults (theme, English-only sources)
-        MekuriSetup.run(preferenceStore, uiPreferences, graph.sourcePreferences, graph.readerPreferences)
+        MekuriSetup.run(
+            preferenceStore,
+            uiPreferences,
+            graph.sourcePreferences,
+            graph.readerPreferences,
+            graph.libraryPreferences,
+            scheduleLibraryUpdates = { LibraryUpdateWorker.setupTask(this) },
+        )
+        MekuriPrefs.init(preferenceStore, scope)
         MekuriVault.init(preferenceStore, scope)
         ShelfPrefs.init(preferenceStore, scope)
+        MekuriWidgets.init(this, scope)
 
         setAppCompatDelegateThemeMode(uiPreferences.themeMode.get())
 

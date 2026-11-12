@@ -272,6 +272,30 @@
                 android:resource="@xml/mekuri_continue_widget_info" />
         </receiver>
 
+        <!-- Mekuri: Shelves and New chapters widgets -->
+        <receiver
+            android:name="mihon.feature.mekuri.widget.ShelvesWidgetReceiver"
+            android:exported="true"
+            android:label="Shelves">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mekuri_shelves_widget_info" />
+        </receiver>
+        <receiver
+            android:name="mihon.feature.mekuri.widget.LatestUpdatesWidgetReceiver"
+            android:exported="true"
+            android:label="New chapters">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mekuri_updates_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

@@ -115,6 +115,7 @@ import mihon.core.metro.metroGraph
 import mihon.core.migration.Migrator
 import mihon.data.cache.ChapterCache
 import mihon.domain.database.repository.DatabaseRepository
+import mihon.feature.mekuri.widget.MekuriWidgets
 import mihon.feature.support.SupportUsScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.OpenInNew
@@ -598,7 +599,13 @@ class MainActivity : BaseActivity() {
         }
 
         val tabToOpen = when (intent.action) {
-            Constants.SHORTCUT_LIBRARY -> HomeScreen.Tab.Library()
+            Constants.SHORTCUT_LIBRARY -> {
+                // Mekuri: a shelf tapped on the Shelves widget
+                intent.getLongExtra(MekuriWidgets.EXTRA_SHELF, Long.MIN_VALUE)
+                    .takeIf { it != Long.MIN_VALUE }
+                    ?.let { MekuriWidgets.pendingShelf.value = it }
+                HomeScreen.Tab.Library()
+            }
             Constants.SHORTCUT_MANGA -> {
                 val idToOpen = intent.extras?.getLong(Constants.MANGA_EXTRA) ?: return false
                 navigator.popUntilRoot()

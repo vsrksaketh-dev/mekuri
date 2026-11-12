@@ -8,14 +8,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import mihon.feature.mekuri.MekuriPrefs
 
 /**
  * Mekuri: a hairline across the top of the reader showing how far through the chapter you are, so you don't need
- * to open the menu to check.
+ * to open the menu to check. Its colour can be changed in Mekuri settings.
  */
 @Composable
 fun ReadingProgressLine(
@@ -24,6 +27,8 @@ fun ReadingProgressLine(
     modifier: Modifier = Modifier,
 ) {
     if (totalPages <= 0) return
+    val custom by MekuriPrefs.progressArgb.collectAsState()
+    val color = if (custom != 0) Color(custom) else MaterialTheme.colorScheme.secondary
     val progress by animateFloatAsState((currentPage.toFloat() / totalPages).coerceIn(0f, 1f), label = "progress")
     Box(
         modifier = modifier
@@ -36,7 +41,7 @@ fun ReadingProgressLine(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(progress)
-                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.85f)),
+                .background(color.copy(alpha = 0.9f)),
         )
     }
 }

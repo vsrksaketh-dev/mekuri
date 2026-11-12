@@ -4,19 +4,25 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import mihon.feature.mekuri.MekuriPrefs
+import mihon.feature.mekuri.MekuriPrefs.AutoLock
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 
 /**
  * Mekuri: the vault. Shelves (categories) and sources put in the vault stay out of the library, Browse, global
  * search, Updates and History until it's unlocked with the phone's fingerprint/PIN. Vault sources are always
- * incognito. Unlocking lasts until the app leaves the foreground.
+ * incognito. When it locks again is the user's choice ([MekuriPrefs.autoLock]): on leaving the app (default), on
+ * leaving the vault shelves, after a few minutes, or only by hand.
  *
  * What's hidden is stored as preferences (so it travels with backups); the unlocked state is memory only.
  */
@@ -42,6 +48,16 @@ object MekuriVault {
     private val _filter = MutableStateFlow(Filter())
     val filter: StateFlow<Filter> = _filter.asStateFlow()
 
+    private var scope: CoroutineScope? = null
+    private var timer: Job? = null
+    private val mode: AutoLock get() = if (MekuriPrefs.ready) {
+        AutoLock.of(
+            MekuriPrefs.autoLock.get(),
+        )
+    } else {
+        AutoLock.LeaveApp
+    }
+
     private var categoriesPref: Preference<Set<String>>? = null
     private var sourcesPref: Preference<Set<String>>? = null
 
@@ -50,6 +66,7 @@ object MekuriVault {
         val sources = preferenceStore.getStringSet("mekuri_vault_sources", emptySet())
         categoriesPref = categories
         sourcesPref = sources
+        this.scope = scope
         combine(_unlocked, categories.changes(), sources.changes(), hiddenManga) { unlocked, c, s, m ->
             Filter(
                 unlocked = unlocked,
@@ -61,18 +78,35 @@ object MekuriVault {
             .onEach { _filter.value = it }
             .launchIn(scope)
 
-        // Lock again whenever the app goes to the background
+        // Leaving the app locks it, except in "only when I lock it" mode
         ProcessLifecycleOwner.get().lifecycle.addObserver(
-            LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) lock() },
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP && mode != AutoLock.Manual) lock()
+            },
         )
     }
 
     fun unlock() {
         _unlocked.value = true
+        timer?.cancel()
+        val minutes = mode.minutes
+        if (minutes > 0) {
+            timer = scope?.launch {
+                delay(minutes * 60_000L)
+                lock()
+            }
+        }
     }
 
     fun lock() {
+        timer?.cancel()
+        timer = null
         _unlocked.value = false
+    }
+
+    /** Called when the user leaves the vault shelves (back to the deck, or another tab). */
+    fun onLeftVaultShelves() {
+        if (_unlocked.value && mode == AutoLock.LeaveVault) lock()
     }
 
     fun isSourceInVault(sourceId: Long): Boolean = sourceId in _filter.value.sources

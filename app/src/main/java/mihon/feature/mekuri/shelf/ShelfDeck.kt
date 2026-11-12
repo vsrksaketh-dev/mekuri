@@ -34,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -251,12 +252,20 @@ fun ShelfDeck(
                         ) { tap ->
                             if (wasMoving) return@detectTapGestures
                             val shelves = currentShelves
-                            val last = shelves.lastIndex
-                            val relative = (tap.x - centerX) / stepPx
-                            val i = (position.value + relative).roundToInt()
-                            if (i !in 0..last) return@detectTapGestures
-                            val cardLeft = centerX + (i - position.value) * stepPx - cardWidth.toPx() / 2
-                            if (tap.x < cardLeft || tap.x > cardLeft + cardWidth.toPx()) return@detectTapGestures
+                            // Cards overlap: test them front to back (nearest the centre is drawn on top), using
+                            // each card's on-screen size, so a tap always lands on the card you can see there
+                            val centerY = size.height / 2f
+                            val i = shelves.indices
+                                .filter { abs(it - position.value) <= 3.2f }
+                                .sortedBy { abs(it - position.value) }
+                                .firstOrNull { index ->
+                                    val p = index - position.value
+                                    val scale = (1f - abs(p) * 0.16f).coerceAtLeast(0.62f)
+                                    val halfW = cardWidth.toPx() * scale / 2
+                                    val halfH = cardHeight.toPx() * scale / 2
+                                    val cx = centerX + p * stepPx
+                                    tap.x in (cx - halfW)..(cx + halfW) && tap.y in (centerY - halfH)..(centerY + halfH)
+                                } ?: return@detectTapGestures
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             if (shelves[i].kind == Shelf.Kind.Vault) currentOnVault() else currentOnOpen(i)
                         }
@@ -345,6 +354,8 @@ fun ShelfDeck(
 @Composable
 private fun ResumeCard(resume: ResumeInfo, onResume: () -> Unit, onHistory: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val customProgress by mihon.feature.mekuri.MekuriPrefs.progressArgb.collectAsState()
+    val progressColor = if (customProgress != 0) Color(customProgress) else scheme.secondary
     Surface(
         shape = RoundedCornerShape(22.dp),
         color = scheme.surfaceContainer,
@@ -408,7 +419,7 @@ private fun ResumeCard(resume: ResumeInfo, onResume: () -> Unit, onHistory: () -
                             (resume.readCount.toFloat() / resume.totalChapters).coerceIn(0f, 1f)
                         }
                     },
-                    color = scheme.secondary,
+                    color = progressColor,
                     trackColor = scheme.onSurface.copy(alpha = 0.1f),
                     drawStopIndicator = {},
                     modifier = Modifier

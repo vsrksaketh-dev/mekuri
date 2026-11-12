@@ -22,7 +22,7 @@ Mekuri is my personal fork of [Mihon](https://github.com/mihonapp/mihon). It ins
 | `app/src/main/java/eu/kanade/presentation/more/settings/screen/about/AboutScreen.kt` | only a GitHub link to this repo; Mihon website/social/privacy links removed |
 | `app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt` | "Support us" (Mihon donations) hidden |
 | `app/src/main/java/eu/kanade/tachiyomi/ui/main/MainActivity.kt` | donation campaign dialog disabled |
-| `app/src/main/java/mihon/feature/mekuri/**` | Mekuri-only code: `MekuriSetup` (one-time defaults), `autoscroll/`, `nav/FloatingNavPill`, `offline/OfflineTab`, `you/YouTab`, `shelf/` (ShelfDeck, BookshelfHome, CompactShelf, Shelf, ShelfPrefs, ShelfMenuSheet, SmartShelves), `vault/` (MekuriVault, VaultScreen, VaultAuth, VaultRow, VaultPrivacy), `settings/MekuriSettingsHome`, `stats/StreakCard`, `widget/ContinueReadingWidget`, `cards/MekuriCards`, `reader/ReadingProgressLine` |
+| `app/src/main/java/mihon/feature/mekuri/**` | Mekuri-only code: `MekuriSetup` (one-time defaults), `MekuriPrefs` (auto-lock, colours, shelf theme, refresh on open), `cloudflare/CloudflareVerify`, `settings/MekuriExtrasScreen`, `widget/MekuriWidgets` (Shelves, New chapters), `autoscroll/`, `nav/FloatingNavPill`, `offline/OfflineTab`, `you/YouTab`, `shelf/` (ShelfDeck, BookshelfHome, CompactShelf, Shelf, ShelfPrefs, ShelfMenuSheet, SmartShelves), `vault/` (MekuriVault, VaultScreen, VaultAuth, VaultRow, VaultPrivacy), `settings/MekuriSettingsHome`, `stats/StreakCard`, `widget/ContinueReadingWidget`, `cards/MekuriCards`, `reader/ReadingProgressLine` |
 | `App.kt` | calls `MekuriSetup.run(...)` on startup |
 | `HomeScreen.kt` | tabs Library · Updates · Offline · Browse · You; floating pill on phones (`MekuriPhoneHome`) |
 | `ExtensionsTab.kt`, `MigrateSourceTab.kt` | tab titles Add-ons / Move |
@@ -38,7 +38,12 @@ Mekuri is my personal fork of [Mihon](https://github.com/mihonapp/mihon). It ins
 | `GetApplicationRelease.kt` (+ test) | correct version comparison |
 | `ReaderAppBars.kt`, `ReaderActivity.kt` | frosted glass via Haze (`hazeSource` on the pages, `hazeBlur` on the bars) |
 | `gradle/libs.versions.toml`, `app/build.gradle.kts` | `haze`, `haze-blur` 2.0.1; glance for the widget |
-| `AppGraph.kt` | `getHistory` accessor (widget) |
+| `AppGraph.kt` | `getHistory`, `getLibraryManga`, `getUpdates` accessors (widgets) |
+| `MangaViewModel.kt` | check a library title for new chapters on open (`MekuriPrefs.refreshOnOpen`); Cloudflare "Verify" snackbar and refresh after it |
+| `WebViewActivity.kt` | closes itself once a Cloudflare check passes when opened with `CloudflareVerify.EXTRA_VERIFY` |
+| `MainActivity.kt` | also: shelf tapped on the Shelves widget (`MekuriWidgets.EXTRA_SHELF`) |
+| `MangaChapterListItem.kt` | bookmark colour from `MekuriPrefs` |
+| `res/xml/mekuri_shelves_widget_info.xml`, `mekuri_updates_widget_info.xml` | Shelves and New chapters widgets |
 | `AndroidManifest.xml`, `res/xml/mekuri_continue_widget_info.xml`, `res/values/mekuri_strings.xml` | Continue reading widget |
 | `StatsScreenContent.kt`, `presentation-core/.../SectionCard.kt` | streak card; centred section titles (`centerTitle`) |
 | `LibraryDisplayMode.kt` (+ `LibraryFlagsTest`), `LibraryPager.kt`, `LibrarySettingsDialog.kt`, `BrowseSourceScreen.kt`, `BrowseSourceToolbar.kt` | card styles `MEKURI_CARDS`, `MEKURI_WIDE_CARDS` |

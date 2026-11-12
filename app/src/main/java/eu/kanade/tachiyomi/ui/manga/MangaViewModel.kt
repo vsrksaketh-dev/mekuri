@@ -311,12 +311,22 @@ class MangaViewModel(
                 .collect { downloadProgress[it.chapter.id] = it.progress }
         }
 
+        // Mekuri: after a one-tap Cloudflare check for this title's source, refresh it
+        viewModelScope.launch {
+            mihon.feature.mekuri.cloudflare.CloudflareVerify.verified.collect { sourceId ->
+                val manga = successState?.manga ?: return@collect
+                if (manga.source == sourceId) fetchAllFromSource(manualFetch = false)
+            }
+        }
+
         viewModelScope.launch {
             // The state loads the entry and its chapters anyway, so they aren't queried separately
             val loadedState = state.filterIsInstance<State.Success>().first()
             val manga = loadedState.manga
             val needRefreshInfo = !manga.initialized
-            val needRefreshChapter = loadedState.chapters.isEmpty()
+            // Mekuri: also check library titles for new chapters each time they're opened (setting)
+            val needRefreshChapter = loadedState.chapters.isEmpty() ||
+                (manga.favorite && mihon.feature.mekuri.MekuriPrefs.refreshOnOpen.get())
 
             // Fetch info-chapters when needed
             if (needRefreshInfo || needRefreshChapter) {
@@ -326,6 +336,8 @@ class MangaViewModel(
                     manualFetch = false,
                     fetchDetails = needRefreshInfo,
                     fetchChapters = needRefreshChapter,
+                    // Mekuri: an automatic check on open stays quiet if it fails (offline etc.)
+                    quiet = !needRefreshInfo && loadedState.chapters.isNotEmpty(),
                 )
                 isRefreshingData.value = false
             }
@@ -350,6 +362,7 @@ class MangaViewModel(
         manualFetch: Boolean,
         fetchDetails: Boolean,
         fetchChapters: Boolean,
+        quiet: Boolean = false,
     ) {
         try {
             val update = updateMangaFromRemote(
@@ -367,6 +380,24 @@ class MangaViewModel(
         } catch (_: CancellationException) {
             // ignore
         } catch (e: Exception) {
+            // Mekuri: a Cloudflare check that needs a person: offer one-tap Verify
+            if (mihon.feature.mekuri.cloudflare.CloudflareVerify.isChallenge(context, e)) {
+                viewModelScope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "This source wants a quick human check",
+                        actionLabel = "Verify",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        mihon.feature.mekuri.cloudflare.CloudflareVerify
+                            .intentFor(context, sourceManager, manga)
+                            ?.let(context::startActivity)
+                    }
+                }
+                return
+            }
+            if (quiet) return
             val message = if (e is NoChaptersException) {
                 context.stringResource(MR.strings.no_chapters_error)
             } else {

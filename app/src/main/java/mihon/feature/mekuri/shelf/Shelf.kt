@@ -108,7 +108,16 @@ internal fun rememberShelfColors(shelves: List<Shelf>): Map<Long, Color> {
         }
     }
     val pinned by ShelfPrefs.pinnedColors.collectAsState()
-    return shelves.associate { it.key to (pinned[it.key]?.let(::Color) ?: colors[it.key] ?: fallbackColor(it.key)) }
+    // A shelf theme from settings colours the shelves in order; a colour pinned to one shelf still wins
+    val theme by mihon.feature.mekuri.MekuriPrefs.theme.collectAsState()
+    return shelves.withIndex().associate { (index, shelf) ->
+        shelf.key to (
+            pinned[shelf.key]?.let(::Color)
+                ?: theme.colorFor(index)
+                ?: colors[shelf.key]
+                ?: fallbackColor(shelf.key)
+            )
+    }
 }
 
 private fun spineColorFrom(bitmap: Bitmap): Color {
