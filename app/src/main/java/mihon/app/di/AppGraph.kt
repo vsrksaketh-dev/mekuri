@@ -122,6 +122,10 @@ interface AppGraph : ViewModelGraph {
 
     val getFavorites: GetFavorites
     val getCategories: GetCategories
+
+    // Mekuri: for the home-screen widgets
+    val getLibraryManga: tachiyomi.domain.manga.interactor.GetLibraryManga
+    val getUpdates: tachiyomi.domain.updates.interactor.GetUpdates
     val resetViewerFlags: ResetViewerFlags
     val resetCategoryFlags: ResetCategoryFlags
     val addTracks: AddTracks

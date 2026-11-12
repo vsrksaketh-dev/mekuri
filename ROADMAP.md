@@ -92,3 +92,13 @@ Motion level 4 of 5. Every release is installable on its own.
 - Deck: cards keep their own state while moving; taps always use the current shelves (no stale shelf after edits)
 - More than 14 shelves: position shown as "5 / 18" instead of a row of dots that would overflow
 - Continue reading: progress reads "12 of 40 read"; the History link is a proper button (ripple, accessibility)
+
+## v2.2.0: refinements (done)
+- Vault auto-lock setting: on leaving the app (default), on leaving the vault shelves, after 1 / 5 / 15 minutes, or only by hand
+- Widgets: "Shelves" (your shelves as coloured cards, tap one to open it) and "New chapters" (latest unread chapters with covers), next to Continue reading. Vault content never shows
+- Colours: reading progress colour and bookmark colour (swatches or custom); shelf themes (From covers, Monochrome, Sumi ink, Twilight, Sunset, Ocean, Forest, Pastel). A colour pinned to one shelf still wins
+- New chapters: one-time change so every title is checked (Mihon's "has unread / not started / outside release period" skips turned off) every 12 h if it was off; opening a library title checks it; all adjustable, plus "Check now"
+- Deck shows only the user's own categories (the automatic Downloaded shelf is gone)
+- Cloudflare: when a source needs the human checkbox, a "Verify" button opens the site, closes it once the check passes and refreshes the title. The checkbox itself is never clicked automatically
+- Deck taps land on the card that is on top (front-to-back hit test with each card's on-screen size)
+- All of the above live in Settings → Mekuri (`MekuriExtrasScreen`)

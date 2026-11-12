@@ -83,11 +83,6 @@ object SettingsLibraryScreen : SearchableSettings {
                     title = stringResource(MR.strings.mekuri_classic_library),
                     subtitle = stringResource(MR.strings.mekuri_classic_library_summary),
                 ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.mekuriSmartShelves,
-                    title = "Smart shelves",
-                    subtitle = "Show a Downloaded shelf at the start of the bookshelf",
-                ),
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.action_edit_categories),
                     subtitle = pluralStringResource(

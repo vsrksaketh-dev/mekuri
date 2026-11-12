@@ -14,6 +14,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -123,7 +124,17 @@ fun MangaChapterListItem(
                             contentDescription = stringResource(MR.strings.action_filter_bookmarked),
                             modifier = Modifier
                                 .sizeIn(maxHeight = with(LocalDensity.current) { textHeight.toDp() - 2.dp }),
-                            tint = MaterialTheme.colorScheme.primary,
+                            // Mekuri: bookmark colour from Mekuri settings
+                            tint = mihon.feature.mekuri.MekuriPrefs.bookmarkArgb.collectAsState().value
+                                .let {
+                                    if (it !=
+                                        0
+                                    ) {
+                                        androidx.compose.ui.graphics.Color(it)
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    }
+                                },
                         )
                     }
                     Text(

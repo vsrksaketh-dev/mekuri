@@ -62,11 +62,10 @@ import mihon.feature.mekuri.shelf.ShelfActionsViewModel
 import mihon.feature.mekuri.shelf.ShelfDeck
 import mihon.feature.mekuri.shelf.ShelfMenuSheet
 import mihon.feature.mekuri.shelf.ShelfPrefs
-import mihon.feature.mekuri.shelf.SmartShelf
-import mihon.feature.mekuri.shelf.SmartShelfScreen
 import mihon.feature.mekuri.shelf.VAULT_SPINE_KEY
 import mihon.feature.mekuri.vault.MekuriVault
 import mihon.feature.mekuri.vault.unlockMekuriVault
+import mihon.feature.mekuri.widget.MekuriWidgets
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.Help
@@ -159,29 +158,6 @@ data object LibraryTab : Tab {
                 )
             }
         }
-        // Smart shelves (Recently read, New this week, Unread, Downloaded) fill themselves from the library
-        val smartEnabled by ShelfPrefs.smartShelves.collectAsState()
-        val smartShelves = remember(state.libraryData, vault, smartEnabled) {
-            if (!smartEnabled) return@remember emptyList()
-            val items = state.libraryData.favorites
-                .distinctBy { it.id }
-                .filterNot { vault.hides(it.id, it.libraryManga.manga.source) }
-            SmartShelf.entries.mapNotNull { smart ->
-                val ids = smart.select(items)
-                if (ids.isEmpty()) return@mapNotNull null
-                val cover = items.firstOrNull { it.id == ids.first() }?.libraryManga?.manga
-                Shelf(
-                    key = smart.key,
-                    name = smart.title,
-                    count = ids.size,
-                    unread = 0,
-                    coverManga = cover,
-                    kind = Shelf.Kind.Smart,
-                    smart = smart,
-                    mangaIds = ids,
-                )
-            }
-        }
         // Continue reading: the library manga read most recently (vault manga left out while locked)
         val resume = remember(state.libraryData, vault) {
             state.libraryData.favorites
@@ -204,11 +180,10 @@ data object LibraryTab : Tab {
                     )
                 }
         }
-        // The big shelf: smart shelves, regular shelves, vault shelves (only while unlocked), then the vault spine
+        // The deck: only the user's own shelves, vault shelves (only while unlocked), then the vault card
         val vaultSpineName = "Vault"
-        val bigShelves = remember(shelves, smartShelves, vaultSpineName) {
-            smartShelves +
-                shelves.filter { it.kind == Shelf.Kind.Normal } +
+        val bigShelves = remember(shelves, vaultSpineName) {
+            shelves.filter { it.kind == Shelf.Kind.Normal } +
                 shelves.filter { it.kind == Shelf.Kind.Hidden } +
                 Shelf(
                     key = VAULT_SPINE_KEY,
@@ -227,6 +202,23 @@ data object LibraryTab : Tab {
         val lastShelfId by lastShelfIdPref.collectAsState()
         val useBookshelf = !classicLibrary && (shelves.size > 1 || vault.categories.isNotEmpty())
         val showBookshelf = useBookshelf && onBookshelf && state.searchQuery.isNullOrEmpty() && !state.selectionMode
+        // Mekuri: a shelf tapped on the Shelves widget opens straight into it
+        val pendingShelf by MekuriWidgets.pendingShelf.collectAsState()
+        LaunchedEffect(pendingShelf, bigShelves) {
+            val id = pendingShelf ?: return@LaunchedEffect
+            val shelf = bigShelves.firstOrNull { it.key == id && it.categoryIndex >= 0 } ?: return@LaunchedEffect
+            MekuriWidgets.pendingShelf.value = null
+            lastShelfIdPref.set(shelf.key)
+            viewModel.updateActiveCategoryIndex(shelf.categoryIndex)
+            onBookshelf = false
+        }
+        // Mekuri: "lock when I leave the vault shelves"
+        val inVaultShelf = !showBookshelf && vault.unlocked && state.activeCategory?.id in vault.categories
+        var wasInVaultShelf by remember { mutableStateOf(false) }
+        LaunchedEffect(inVaultShelf) {
+            if (wasInVaultShelf && !inVaultShelf) MekuriVault.onLeftVaultShelves()
+            wasInVaultShelf = inVaultShelf
+        }
         SideEffect { inShelfCategory = useBookshelf && !onBookshelf }
 
         val onClickRefresh: suspend (Category?) -> Boolean = { category ->
@@ -352,13 +344,8 @@ data object LibraryTab : Tab {
                             val shelf = bigShelves[it]
                             focusFirstHidden = false
                             lastShelfIdPref.set(shelf.key)
-                            val smart = shelf.smart
-                            if (smart != null) {
-                                navigator.push(SmartShelfScreen(smart, shelf.mangaIds))
-                            } else {
-                                viewModel.updateActiveCategoryIndex(shelf.categoryIndex)
-                                onBookshelf = false
-                            }
+                            viewModel.updateActiveCategoryIndex(shelf.categoryIndex)
+                            onBookshelf = false
                         },
                         onShelfMenu = {
                             menuShelf = bigShelves[it]

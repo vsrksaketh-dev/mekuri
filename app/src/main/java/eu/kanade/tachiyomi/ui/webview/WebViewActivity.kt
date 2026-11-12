@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.core.net.toUri
@@ -22,9 +23,11 @@ import eu.kanade.tachiyomi.util.system.toWebViewHeaders
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.view.setComposeContent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import mihon.app.di.appGraph
+import mihon.feature.mekuri.cloudflare.CloudflareVerify
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.source.service.SourceManager
@@ -83,6 +86,17 @@ class WebViewActivity : BaseActivity() {
             if (headers == null) {
                 LoadingScreen()
                 return@setComposeContent
+            }
+
+            // Mekuri: opened to pass a Cloudflare check; close by itself once it's passed
+            if (intent.getBooleanExtra(CloudflareVerify.EXTRA_VERIFY, false)) {
+                LaunchedEffect(Unit) {
+                    CloudflareVerify.awaitClearance(network.cookieJar, url)
+                    delay(600)
+                    toast("Verified, refreshing")
+                    CloudflareVerify.markVerified(intent.getLongExtra(SOURCE_KEY, -1L))
+                    finish()
+                }
             }
 
             WebViewScreenContent(
